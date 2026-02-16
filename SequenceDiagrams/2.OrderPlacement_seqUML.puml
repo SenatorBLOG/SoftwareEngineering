@@ -1,0 +1,62 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 110
+
+actor Customer
+participant "Web Shop UI" as UI
+participant ShoppingCartService
+participant OrderService
+participant PaymentGateway
+participant InventoryService
+database Database
+
+Customer -> UI: add item to cart (multiple times)
+loop for each item
+    Customer -> UI: select product & quantity
+    UI -> ShoppingCartService: addItem(productId, quantity)
+    ShoppingCartService --> UI: item added
+end
+
+Customer -> UI: click "Checkout"
+UI -> ShoppingCartService: getCartContents()
+ShoppingCartService -> ShoppingCartService: calculateTotal()
+ShoppingCartService --> UI: return items, totalPrice
+
+UI -> OrderService: createOrder(items, total, customerInfo)
+activate OrderService
+
+OrderService -> InventoryService: reserveItems(items)
+activate InventoryService
+InventoryService --> OrderService: reserved OK / outOfStock
+
+alt all items reserved
+    OrderService -> PaymentGateway: initiatePayment(total, card)
+    activate PaymentGateway
+    PaymentGateway --> OrderService: approved / declined
+    deactivate PaymentGateway
+
+    alt payment approved
+        OrderService -> OrderService: createOrderRecord()
+        OrderService -> Database: saveOrder(order)
+        Database --> OrderService: saved
+        OrderService --> UI: orderConfirmed(orderId)
+        UI --> Customer: "Order placed! ID: " + orderId
+        OrderService -> InventoryService: confirmReservation()
+    else payment declined
+        OrderService -> InventoryService: releaseAllReservations()
+        OrderService --> UI: paymentFailed
+        UI --> Customer: "Payment failed, try again"
+    end
+else some items out of stock
+    OrderService -> InventoryService: releaseReservations()
+    OrderService --> UI: itemsUnavailable
+    UI --> Customer: "Some items are out of stock"
+end
+
+deactivate OrderService
+
+opt continue shopping
+    UI --> Customer: show catalog again
+end
+
+@enduml

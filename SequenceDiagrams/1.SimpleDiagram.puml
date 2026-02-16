@@ -1,0 +1,15 @@
+@startuml
+actor User
+participant "Login Screen" as UI
+participant AuthService
+
+User -> UI: enter username & password\nclick "Login"
+UI -> AuthService: checkCredentials(username, password)
+activate AuthService
+
+AuthService --> UI: true   // success
+deactivate AuthService
+
+UI --> User: "Welcome!"\nredirect to dashboard
+
+@enduml
