@@ -1,0 +1,97 @@
+@startuml
+skinparam class {
+    BackgroundColor linear #FFFFFF to #E6F7FF
+    BorderColor #007BFF
+    FontName Arial
+    FontSize 14
+    FontColor #0056B3
+    StereotypeFontColor #007BFF
+    Shadowing true
+    ArrowColor #007BFF
+    AttributeFontColor #333333
+    AttributeFontSize 12
+    MethodFontColor #333333
+    MethodFontSize 12
+}
+
+title Class Diagram for OneFitPass Canada
+
+package "Core Entities" {
+
+    class User {
+        + user_id: int
+        + full_name: string
+        + email: string
+        + password_hash: string
+        + role: enum {user, partner, admin}
+        + login()
+        + updateProfile()
+    }
+
+    class Admin extends User {
+        + configurePlan()
+        + resolveDispute()
+    }
+
+    class Subscription {
+        + subscription_id: int
+        + user_id: int
+        + plan_id: int
+        + start_date: date
+        + end_date: date
+        + status: enum {active, paused, cancelled}
+        + renew()
+        + cancel()
+    }
+
+    class Plan {
+        + plan_id: int
+        + name: string
+        + monthly_price: decimal
+        + visit_limit: int
+        + commission_rate: decimal
+    }
+
+    class Gym {
+        + gym_id: int
+        + name: string
+        + address: string
+        + verified_status: boolean
+        + opening_hours: json
+        + updateSchedule()
+    }
+
+    class CheckIn {
+        + checkin_id: int
+        + user_id: int
+        + gym_id: int
+        + timestamp: timestamp
+        + validation_status: enum {valid, invalid}
+        + validate()
+    }
+
+    class Payment {
+        + payment_id: int
+        + subscription_id: int
+        + amount: decimal
+        + status: enum {pending, paid}
+        + process()
+    }
+
+}
+
+User "1" -- "1..*" Subscription : has
+Subscription "1" -- "1" Plan : based on
+User "1" -- "1..*" CheckIn : has history
+Gym "1" -- "1..*" CheckIn : tracks visits
+Subscription "1" -- "1..*" Payment : has records
+
+note bottom of User : Base user entity with RBAC roles
+note bottom of Admin : Extends User for admin privileges
+note bottom of Subscription : Manages user plans over time
+note bottom of Plan : Defines tiers with limits and pricing
+note bottom of Gym : Partner gyms with verification
+note bottom of CheckIn : Logs visits with validation
+note bottom of Payment : Handles transactions via Stripe
+
+@enduml

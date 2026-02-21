@@ -1,0 +1,98 @@
+@startuml
+skinparam sequence {
+    ArrowColor #007BFF
+    ActorBorderColor #0056B3
+    ActorBackgroundColor #E6F7FF
+    ActorFontColor #0056B3
+    ActorFontSize 14
+    ActorFontName Arial
+    ParticipantBorderColor #007BFF
+    ParticipantBackgroundColor linear #FFFFFF to #E6F7FF
+    ParticipantFontName Arial
+    ParticipantFontSize 14
+    LifeLineBorderColor #007BFF
+    LifeLineBackgroundColor #B3D7FF
+    BoxBorderColor #0056B3
+    BoxBackgroundColor #F0F8FF
+    GroupBorderColor #007BFF
+    GroupBackgroundColor #F0F8FF
+    Shadowing true
+    ArrowFontName Arial
+    ArrowFontSize 12
+    NoteBackgroundColor #FFFFE0
+    NoteBorderColor #FFD700
+    NoteFontName Arial
+    NoteFontSize 12
+}
+
+actor "User (Mobile App)" as User
+participant "Backend API" as API
+database "Database" as DB
+participant "Gym Partner (Scanner)" as Gym
+participant "Notification Service" as Notify
+
+note over User: User opens app and requests QR code
+
+User -> User: Request QR
+activate User
+
+User -> API: Authenticated request for QR
+activate API
+
+API -> DB: Verify subscription status
+activate DB
+DB --> API: Return status (active/inactive, visits remaining)
+deactivate DB
+
+alt Active subscription and visits remaining
+    API -> API: Generate encrypted, time-limited token (self-message)
+    API --> User: Return dynamic QR with token
+else Inactive subscription or no visits remaining
+    API --> User: Error: Subscription invalid or limit exceeded
+    deactivate API
+    deactivate User
+    return Fail notification
+end
+
+User -> User: Display QR to Gym Partner
+deactivate User
+
+Gym -> API: Scan QR and send for validation
+activate Gym
+
+API -> API: Validate token (self-message: check expiry, integrity)
+
+loop [Up to 3 attempts] if invalid (expired or error)
+    API --> Gym: Invalid QR - Retry scan
+    Gym -> API: Rescan QR
+end
+
+opt Geolocation fraud check enabled
+    API -> API: Verify geolocation match (self-message)
+    alt Fraud detected
+        API --> Gym: Fail: Fraud indicators
+        deactivate API
+        deactivate Gym
+        return Fraud alert
+    end
+end
+
+alt Valid scan and no fraud
+    API -> DB: Record check-in transactionally
+    activate DB
+    DB --> API: Confirmation
+    deactivate DB
+    
+    API -> Notify: Send confirmations (WebSockets)
+    activate Notify
+    Notify --> User: Push notification: Check-in successful
+    Notify --> Gym: Push notification: Check-in confirmed
+    deactivate Notify
+else Fail (after retries)
+    API --> Gym: Permanent fail: Max retries exceeded
+end
+
+deactivate API
+deactivate Gym
+
+@enduml
