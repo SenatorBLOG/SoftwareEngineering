@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Student Registration</title>
+</head>
+<body>
+
+<h2>Student Registration Form</h2>
+<h3>Student Statistics</h3>
+
+<p>Active Students: <span th:text="${activeCount}"></span></p>
+<p>Inactive Students: <span th:text="${inactiveCount}"></span></p>
+
+<hr>
+
+<form th:action="@{/save}" th:object="${student}" method="post">
+
+    <input type="hidden" th:field="*{id}" />
+    First Name:
+    <input type="text" th:field="*{firstName}" /><br><br>
+
+    Last Name:
+    <input type="text" th:field="*{lastName}" /><br><br>
+
+    Email:
+    <input type="email" th:field="*{email}" /><br><br>
+
+    Date of Birth:
+    <input type="date" th:field="*{dateOfBirth}" /><br><br>
+
+    Gender:
+    <input type="radio" th:field="*{gender}" value="Male" /> Male
+    <input type="radio" th:field="*{gender}" value="Female" /> Female
+    <input type="radio" th:field="*{gender}" value="Other" /> Other
+    <br><br>
+
+    Program:
+    <select th:field="*{program}">
+        <option th:each="prog : ${programs}"
+                th:value="${prog}"
+                th:text="${prog}">
+        </option>
+    </select>
+    <br><br>
+
+    Hobbies:
+    <div th:each="hobby : ${hobbyList}">
+        <input type="checkbox"
+               name="hobbiesSelected"
+               th:value="${hobby}"
+               th:checked="${student.hobbies != null and #strings.contains(student.hobbies, hobby)}" />
+        <span th:text="${hobby}"></span>
+    </div>
+    <br>
+
+    Active:
+    <input type="checkbox" th:field="*{active}" /><br><br>
+
+    Comments:
+    <textarea th:field="*{comments}"></textarea><br><br>
+
+    <button type="submit">Save</button>
+
+    <br><br>
+    <a th:href="@{/list}">
+        <button type="button">View Student List</button>
+    </a>
+
+</form>
+
+</body>
+</html>
