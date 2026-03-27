@@ -1,0 +1,78 @@
+@startuml
+title ATM Cash Withdrawal Activity Diagram
+
+skinparam shadowing false
+skinparam activity {
+    BackgroundColor #F0F8FF
+    BorderColor #4682B4
+}
+
+' === Swimlanes ===
+|Customer|
+start
+
+:Insert Card;
+
+|ATM Machine|
+:Read Card;
+
+|Bank|
+:Validate Card;
+
+if (Card valid?) then (yes)
+else (no)
+    |ATM Machine|
+    :Display "Invalid Card";
+    :Eject Card;
+    stop
+endif
+
+|Customer|
+:Enter PIN;
+
+|ATM Machine|
+:Read PIN;
+
+|Bank|
+:Verify PIN;
+
+if (PIN valid?) then (yes)
+else (no)
+    |ATM Machine|
+    :Display "Invalid PIN";
+    :Eject Card;
+    stop
+endif
+
+|Customer|
+:Select Withdrawal;
+:Enter Amount;
+
+|ATM Machine|
+:Request Balance Check;
+
+|Bank|
+:Check Account Balance;
+
+if (Sufficient funds?) then (yes)
+    :Update Balance (Debit);
+    
+    |ATM Machine|
+    :Dispense Cash;
+    
+    |Customer|
+    :Take Cash;
+    
+    |ATM Machine|
+    :Print Receipt (optional);
+    :Eject Card;
+    
+    stop
+else (no)
+    |ATM Machine|
+    :Display "Insufficient Funds";
+    :Eject Card;
+    stop
+endif
+
+@enduml

@@ -1,0 +1,81 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 110
+
+actor User
+participant "Reset Form UI" as UI
+participant AuthService
+participant EmailService
+database UserDatabase
+
+User -> UI: enter email\nclick "Reset Password"
+UI -> AuthService: requestReset(email)
+activate AuthService
+
+AuthService -> UserDatabase: checkEmailExists(email)
+activate UserDatabase
+UserDatabase --> AuthService: exists / not exists
+deactivate UserDatabase
+
+alt email exists
+    AuthService -> EmailService: sendResetCode(email)
+    activate EmailService
+    EmailService --> AuthService: code sent
+    deactivate EmailService
+
+    AuthService --> UI: "Enter reset code"
+    UI --> User: prompt for code
+
+    loop max 3 attempts
+        User -> UI: enter code
+        UI -> AuthService: submitCode(code)
+
+        AuthService -> EmailService: verifyCode(code)
+        activate EmailService
+        EmailService --> AuthService: correct / wrong
+        deactivate EmailService
+
+        alt code correct
+            break
+        else code wrong
+            AuthService --> UI: "Wrong code, try again"
+            UI --> User: show error
+        end
+    end
+
+    alt code verified successfully
+        UI --> User: "Enter new password"
+        User -> UI: enter new password
+        UI -> AuthService: setNewPassword(newPass)
+
+        AuthService -> AuthService: hashNewPassword(newPass)  // self-message
+
+        AuthService -> UserDatabase: updatePassword(email, hashedPass)
+        activate UserDatabase
+        UserDatabase --> AuthService: password updated
+        deactivate UserDatabase
+
+        AuthService --> UI: resetSuccess
+        UI --> User: "Password reset! Log in now"
+    else max attempts reached
+        AuthService --> UI: verificationFailed
+        UI --> User: "Too many attempts. Try later"
+    end
+
+else email not exists
+    AuthService --> UI: noAccount
+    UI --> User: "No account with this email"
+end
+
+deactivate AuthService
+
+opt resend code
+    User -> UI: click "Resend code"
+    UI -> AuthService: resendResetCode(email)
+    activate AuthService
+    AuthService -> EmailService: sendNewCode(email)
+    EmailService --> AuthService: new code sent
+    deactivate AuthService
+end
+
+@enduml

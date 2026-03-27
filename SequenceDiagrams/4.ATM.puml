@@ -1,0 +1,100 @@
+@startuml
+skinparam shadowing false
+skinparam dpi 110
+
+actor Customer
+participant "ATM Interface" as UI
+participant "BankService" as BankService
+database "AccountDatabase" as AccountDatabase
+
+Customer -> UI: insert card
+activate UI
+UI -> BankService: validateCard(cardNumber)
+activate BankService
+
+BankService -> AccountDatabase: checkCardValid(cardNumber)
+activate AccountDatabase
+AccountDatabase --> BankService: valid / invalid
+deactivate AccountDatabase
+
+alt card valid
+    BankService --> UI: card OK
+    UI --> Customer: "Enter PIN"
+    deactivate UI
+
+    loop max 3 attempts
+        Customer -> UI: enter PIN
+        activate UI
+        UI -> BankService: verifyPIN(cardNumber, PIN)
+        activate BankService
+
+        BankService -> AccountDatabase: getPIN(cardNumber)
+        activate AccountDatabase
+        AccountDatabase --> BankService: storedPIN
+        deactivate AccountDatabase
+
+        BankService -> BankService: comparePIN()
+        alt PIN correct
+            BankService --> UI: pinAccepted
+            deactivate BankService
+            deactivate UI
+            break
+        else PIN wrong
+            BankService --> UI: wrong PIN
+            UI --> Customer: "Wrong PIN, try again (attempts left: X)"
+            deactivate BankService
+            deactivate UI
+        end
+    end
+
+    alt PIN verified successfully
+        UI -> Customer: "Enter amount to withdraw"
+        Customer -> UI: enter amount
+        UI -> BankService: requestWithdrawal(amount)
+        activate BankService
+
+        BankService -> AccountDatabase: getBalance(cardNumber)
+        activate AccountDatabase
+        AccountDatabase --> BankService: currentBalance
+        deactivate AccountDatabase
+
+        BankService -> BankService: checkSufficientFunds()
+        alt sufficient balance
+            BankService -> AccountDatabase: updateBalance(currentBalance - amount)
+            activate AccountDatabase
+            AccountDatabase --> BankService: balance updated
+            deactivate AccountDatabase
+
+            BankService --> UI: withdrawalApproved
+            UI --> Customer: dispense cash
+            UI --> Customer: "Transaction complete"
+        else insufficient balance
+            BankService --> UI: insufficientFunds
+            UI --> Customer: "Insufficient balance"
+        end
+        deactivate BankService
+    else max attempts reached or PIN wrong
+        activate BankService
+        BankService -> AccountDatabase: blockCard(cardNumber)
+        activate AccountDatabase
+        AccountDatabase --> BankService: card blocked
+        deactivate AccountDatabase
+        BankService --> UI: cardBlocked
+        UI --> Customer: "Card blocked. Contact bank"
+        deactivate BankService
+    end
+
+else card invalid
+    BankService --> UI: invalidCard
+    UI --> Customer: "Invalid card. Ejecting card"
+    deactivate BankService
+end
+
+opt another transaction
+    UI --> Customer: "Another transaction? Yes/No"
+    Customer -> UI: select Yes
+end
+
+deactivate UI
+
+@enduml

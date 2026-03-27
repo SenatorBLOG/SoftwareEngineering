@@ -1,0 +1,93 @@
+@startuml
+actor User
+
+participant "Registration Form UI" as UI
+participant "Auth Service" as Auth
+participant "Email Service" as Email
+database "User Database" as DB
+
+' --- User fills form ---
+User -> UI : fill(email, username, password)\nclick Sign Up
+activate UI
+
+UI -> UI : client-side validation
+
+alt invalid input
+  UI --> User : show validation errors
+  deactivate UI
+else valid input
+
+  UI -> Auth : submitRegistration()
+  activate Auth
+
+  Auth -> Auth : hashPassword()
+
+  Auth -> DB : checkEmail()
+  activate DB
+  DB --> Auth : result
+  deactivate DB
+
+  Auth -> DB : checkUsername()
+  activate DB
+  DB --> Auth : result
+  deactivate DB
+
+  alt email or username exists
+    Auth --> UI : registrationFailed
+    deactivate Auth
+    UI --> User : show error
+  else unique
+
+    Auth -> Email : sendVerificationCode()
+    activate Email
+    Email -> Email : generateCode()
+    Email --> User : email with code
+    deactivate Email
+
+    deactivate Auth
+    UI --> User : ask for verification code
+
+    loop up to 3 attempts
+      User -> UI : enter code
+      activate UI
+      UI -> Auth : verifyCode()
+      activate Auth
+
+      Auth -> Email : checkCode()
+      activate Email
+      Email --> Auth : valid / invalid
+      deactivate Email
+
+      alt code valid
+        Auth -> DB : saveUser()
+        activate DB
+        DB --> Auth : success
+        deactivate DB
+
+        Auth --> UI : success
+        deactivate Auth
+
+        opt send welcome email
+          UI -> Email : sendWelcome()
+          activate Email
+          Email --> User : welcome message
+          deactivate Email
+        end
+
+        UI --> User : registration complete
+        deactivate UI
+        break
+      else wrong code
+        Auth --> UI : error
+        deactivate Auth
+        UI --> User : retry message
+        deactivate UI
+      end
+    end
+
+    UI --> User : verification failed after 3 attempts
+
+  end
+end
+
+@enduml
