@@ -1,78 +1,34 @@
 @startuml
-title ATM Cash Withdrawal Activity Diagram
+title Диаграмма активности: Снятие наличных в банкомате (ATM Cash Withdrawal)
 
 skinparam shadowing false
+skinparam monochrome true
 skinparam activity {
-    BackgroundColor #F0F8FF
-    BorderColor #4682B4
+  BackgroundColor #E3F2FD
+  BorderColor #1565C0
 }
 
-' === Swimlanes ===
-|Customer|
 start
 
-:Insert Card;
+:Вставить карту;
+:Ввести PIN;
 
-|ATM Machine|
-:Read Card;
+if (PIN действителен?) then (да)
+  :Ввести сумму снятия;
 
-|Bank|
-:Validate Card;
+  if (Достаточно средств на счёте?) then (да)
+    :Выдать наличные;
+    :Обновить баланс счёта;
+  else (нет)
+    :Показать сообщение:\n«Недостаточно средств»;
+  endif
 
-if (Card valid?) then (yes)
-else (no)
-    |ATM Machine|
-    :Display "Invalid Card";
-    :Eject Card;
-    stop
+else (нет)
+  :Показать сообщение:\n«Неверный PIN»;
 endif
 
-|Customer|
-:Enter PIN;
+:Извлечь карту;
 
-|ATM Machine|
-:Read PIN;
-
-|Bank|
-:Verify PIN;
-
-if (PIN valid?) then (yes)
-else (no)
-    |ATM Machine|
-    :Display "Invalid PIN";
-    :Eject Card;
-    stop
-endif
-
-|Customer|
-:Select Withdrawal;
-:Enter Amount;
-
-|ATM Machine|
-:Request Balance Check;
-
-|Bank|
-:Check Account Balance;
-
-if (Sufficient funds?) then (yes)
-    :Update Balance (Debit);
-    
-    |ATM Machine|
-    :Dispense Cash;
-    
-    |Customer|
-    :Take Cash;
-    
-    |ATM Machine|
-    :Print Receipt (optional);
-    :Eject Card;
-    
-    stop
-else (no)
-    |ATM Machine|
-    :Display "Insufficient Funds";
-    :Eject Card;
-    stop
-endif
+stop
 
 @enduml
